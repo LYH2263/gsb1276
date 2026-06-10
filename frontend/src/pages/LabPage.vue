@@ -293,8 +293,15 @@ async function runCurrentCode() {
     })
 
     const data = res?.data?.data || {}
-    outputText.value = `${data.stdout || ''}${data.stderr ? `\n${data.stderr}` : ''}`.trim()
+    const parts = []
+    if (data.stdout) parts.push(data.stdout)
+    if (data.stderr) parts.push(data.stderr)
+    outputText.value = parts.join('\n') || (data.exitCode ? '程序异常退出（无输出）' : '')
     runtimeMs.value = data.runtimeMs || 0
+    activeTab.value = 'result'
+  } catch (err) {
+    const msg = err?.response?.data?.error?.message || err?.message || '运行失败'
+    outputText.value = msg
     activeTab.value = 'result'
   } finally {
     running.value = false
