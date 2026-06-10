@@ -20,7 +20,7 @@ const run = asyncHandler(async (req, res) => {
 
     let submissionId = null;
     if (req.user?.id && challengeId) {
-      const score = result.stderr ? 40 : Math.min(100, 70 + Math.floor((result.stdout || '').length / 8));
+      const score = result.exitCode !== 0 ? 40 : Math.min(100, 70 + Math.floor((result.stdout || '').length / 8));
       const submission = await Submission.create({
         userId: req.user.id,
         challengeId,

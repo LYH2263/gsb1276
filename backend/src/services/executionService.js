@@ -42,12 +42,7 @@ function runProcess(command, args, { cwd, input, timeoutMs = 7000 }) {
         return;
       }
 
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-
-      reject(new Error(stderr || `命令执行失败，退出码 ${code}`));
+      resolve({ stdout, stderr, exitCode: code ?? 1 });
     });
 
     if (input) child.stdin.write(input);
@@ -88,6 +83,7 @@ async function runCode({ language, code, input }) {
         stdout: result.stdout,
         stderr: result.stderr,
         runtimeMs: Date.now() - startAt,
+        exitCode: result.exitCode,
       };
     }
 
@@ -102,6 +98,7 @@ async function runCode({ language, code, input }) {
         stdout: result.stdout,
         stderr: result.stderr,
         runtimeMs: Date.now() - startAt,
+        exitCode: result.exitCode,
       };
     }
 
@@ -113,18 +110,28 @@ async function runCode({ language, code, input }) {
         stdout: result.stdout,
         stderr: result.stderr,
         runtimeMs: Date.now() - startAt,
+        exitCode: result.exitCode,
       };
     }
 
     const javaCode = ensureJavaMain(code);
     const sourcePath = path.join(rootDir, 'Main.java');
     await fs.writeFile(sourcePath, javaCode, 'utf8');
-    await runProcess('javac', ['Main.java'], { cwd: rootDir, input: '' });
+    const compileResult = await runProcess('javac', ['Main.java'], { cwd: rootDir, input: '' });
+    if (compileResult.exitCode !== 0) {
+      return {
+        stdout: compileResult.stdout,
+        stderr: compileResult.stderr,
+        runtimeMs: Date.now() - startAt,
+        exitCode: compileResult.exitCode,
+      };
+    }
     const result = await runProcess('java', ['-cp', rootDir, 'Main'], { cwd: rootDir, input });
     return {
       stdout: result.stdout,
       stderr: result.stderr,
       runtimeMs: Date.now() - startAt,
+      exitCode: result.exitCode,
     };
   } finally {
     await fs.rm(rootDir, { recursive: true, force: true });
