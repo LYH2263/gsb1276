@@ -290,11 +290,15 @@ async function runCurrentCode() {
       code: code.value,
       input: stdinText.value,
       challengeId: selectedChallengeId.value || undefined,
-    })
+    }, { silent: true })
 
     const data = res?.data?.data || {}
     outputText.value = `${data.stdout || ''}${data.stderr ? `\n${data.stderr}` : ''}`.trim()
     runtimeMs.value = data.runtimeMs || 0
+    activeTab.value = 'result'
+  } catch (err) {
+    const message = err?.response?.data?.error?.message || err?.message || '请求失败'
+    outputText.value = message
     activeTab.value = 'result'
   } finally {
     running.value = false
