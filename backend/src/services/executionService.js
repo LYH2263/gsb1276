@@ -42,12 +42,11 @@ function runProcess(command, args, { cwd, input, timeoutMs = 7000 }) {
         return;
       }
 
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-
-      reject(new Error(stderr || `命令执行失败，退出码 ${code}`));
+      // 用户代码运行出错（非零退出码）也作为正常结果返回，
+      // 由调用方将 stderr 透传到前端结果面板，而不是抛成接口异常。
+      const finalStderr =
+        code === 0 ? stderr : stderr || `命令执行失败，退出码 ${code}`;
+      resolve({ stdout, stderr: finalStderr, exitCode: code });
     });
 
     if (input) child.stdin.write(input);
@@ -119,7 +118,15 @@ async function runCode({ language, code, input }) {
     const javaCode = ensureJavaMain(code);
     const sourcePath = path.join(rootDir, 'Main.java');
     await fs.writeFile(sourcePath, javaCode, 'utf8');
-    await runProcess('javac', ['Main.java'], { cwd: rootDir, input: '' });
+    const compileResult = await runProcess('javac', ['Main.java'], { cwd: rootDir, input: '' });
+    if (compileResult.exitCode !== 0) {
+      // 编译失败属于用户代码错误，直接把编译器输出作为 stderr 返回
+      return {
+        stdout: compileResult.stdout,
+        stderr: compileResult.stderr,
+        runtimeMs: Date.now() - startAt,
+      };
+    }
     const result = await runProcess('java', ['-cp', rootDir, 'Main'], { cwd: rootDir, input });
     return {
       stdout: result.stdout,
