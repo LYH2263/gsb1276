@@ -296,6 +296,10 @@ async function runCurrentCode() {
     outputText.value = `${data.stdout || ''}${data.stderr ? `\n${data.stderr}` : ''}`.trim()
     runtimeMs.value = data.runtimeMs || 0
     activeTab.value = 'result'
+  } catch (error) {
+    const message = error?.response?.data?.error?.message || error?.message || '运行失败'
+    outputText.value = `[运行错误] ${message}`
+    activeTab.value = 'result'
   } finally {
     running.value = false
   }
